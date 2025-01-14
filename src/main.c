@@ -20,8 +20,8 @@
 #define WIN_TITLE "Game of Life"
 #define WIN_WIDTH (MAX_COLS * CELL_SIZE + MAX_COLS * STROKE_WIDTH)
 #define WIN_HEIGHT (MAX_ROWS * CELL_SIZE + MAX_ROWS * STROKE_WIDTH)
-#define TICK_RATE 60
-#define TICK_DELAY (1.0/TICK_RATE)
+#define TICK_RATE 30
+#define TICK_DELAY (1000/TICK_RATE)
 
 
 static SDL_Window *window = NULL;
@@ -29,34 +29,31 @@ static SDL_Renderer *renderer = NULL;
 static bool paused = false;
 
 bool cells[GRID_SIZE] = {0};
+bool next[GRID_SIZE] = {0};
 
+const int n_directions[8][2] = {
+        {-1, -1}, // Top-left
+        {-1, 0},  // Top
+        {-1, 1},  // Top-right
+        {0,  -1}, // Left
+        {0,  1},  // Right
+        {1,  -1}, // Bottom-left
+        {1,  0},  // Bottom
+        {1,  1}   // Bottom-right
+};
 
-void GetNeighbours(bool *neighbours[8], int idx) {
-    int row = idx / MAX_COLS;
-    int col = idx % MAX_COLS;
-
-    int n_directions[8][2] = {
-            {-1, -1}, // Top-left
-            {-1, 0},  // Top
-            {-1, 1},  // Top-right
-            {0,  -1}, // Left
-            {0,  1},  // Right
-            {1,  -1}, // Bottom-left
-            {1,  0},  // Bottom
-            {1,  1}   // Bottom-right
-    };
+void GetNeighbours(bool *neighbours[8], size_t idx) {
+    size_t row = idx / MAX_COLS;
+    size_t col = idx % MAX_COLS;
 
     for (int i = 0, n = 0; i < 8; ++i) {
-        int new_row = row + n_directions[i][0];
-        int new_col = col + n_directions[i][1];
-
-        if (new_row >= 0 && new_row < MAX_ROWS && new_col >= 0 && new_col < MAX_COLS) {
-            neighbours[n++] = &cells[new_row * MAX_COLS + new_col];
-        }
+        size_t new_row = row + n_directions[i][0];
+        size_t new_col = col + n_directions[i][1];
+        neighbours[n++] = &cells[new_row * MAX_COLS + new_col];
     }
 }
 
-int GetAliveCountNeighbours(int idx) {
+int GetAliveCountNeighbours(size_t idx) {
     // get neighbours
     bool *neighbours[8] = {0};
     GetNeighbours(neighbours, idx);
@@ -65,6 +62,39 @@ int GetAliveCountNeighbours(int idx) {
     int alive = 0;
     for (int i = 0; i < 8; ++i) if (neighbours[i] && *neighbours[i]) ++alive;
     return alive;
+}
+
+void UpdateCells() {
+
+    size_t idx;
+    int n_alive;
+
+    for (size_t row = 0; row < MAX_ROWS; ++row) {
+        for (size_t col = 0; col < MAX_COLS; ++col) {
+
+            idx = row * MAX_COLS + col;
+            n_alive = GetAliveCountNeighbours(idx);
+
+            if (cells[idx]) {
+                /*
+                 * Any live cell with fewer than two live neighbours dies, as if by underpopulation.
+                 * Any live cell with two or three live neighbours lives on to the next generation.
+                 * Any live cell with more than three live  neighbours dies, as if by overpopulation.
+                 */
+                next[idx] = !(n_alive < 2 || n_alive > 3);
+            } else {
+                /* Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction. */
+                next[idx] = n_alive == 3;
+            }
+
+        }
+    }
+
+    // move next into current
+    for (size_t i = 0; i < GRID_SIZE; ++i) {
+        cells[i] = next[i];
+    }
+
 }
 
 void DrawGrid() {
@@ -158,8 +188,12 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 }
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
-    if (paused) return SDL_APP_CONTINUE;
+    // update
+    if (!paused) {
+        UpdateCells();
+    }
 
+    // render
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
@@ -169,6 +203,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     SDL_RenderPresent(renderer);
     SDL_Delay(TICK_DELAY);
 
+    // continue happily
     return SDL_APP_CONTINUE;
 }
 
