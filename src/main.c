@@ -8,6 +8,9 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <stdlib.h>
+#include <time.h>
+#include "generators/noise.h"
 
 
 #define MAX_COLS 32
@@ -131,6 +134,18 @@ void DrawCells() {
     }
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "cert-msc51-cpp"
+
+void GenerateRandomPattern() {
+    float threshold = 0.0f;
+
+    srand(time(NULL));
+    InitPermutationTable();
+    GenerateBinaryNoise(MAX_COLS, MAX_ROWS, cells, threshold);
+}
+
+#pragma clang diagnostic pop
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -146,9 +161,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
         return SDL_APP_FAILURE;
     }
 
-    cells[0] = 1;
-    cells[1] = 1;
-    cells[2] = 1;
+    GenerateRandomPattern();
 
     return SDL_APP_CONTINUE;
 }
@@ -171,7 +184,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
         }
     }
 
-    if (event->type == SDL_EVENT_MOUSE_BUTTON_UP && event->button.button == SDL_BUTTON_LEFT) {
+    if (paused && event->type == SDL_EVENT_MOUSE_BUTTON_UP && event->button.button == SDL_BUTTON_LEFT) {
         float x, y;
         SDL_GetMouseState(&x, &y);
 
