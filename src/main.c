@@ -23,12 +23,49 @@
 #define TICK_RATE 60
 #define TICK_DELAY (1.0/TICK_RATE)
 
+
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
 static bool paused = false;
 
 bool cells[GRID_SIZE] = {0};
 
+
+void GetNeighbours(bool *neighbours[8], int idx) {
+    int row = idx / MAX_COLS;
+    int col = idx % MAX_COLS;
+
+    int n_directions[8][2] = {
+            {-1, -1}, // Top-left
+            {-1, 0},  // Top
+            {-1, 1},  // Top-right
+            {0,  -1}, // Left
+            {0,  1},  // Right
+            {1,  -1}, // Bottom-left
+            {1,  0},  // Bottom
+            {1,  1}   // Bottom-right
+    };
+
+    for (int i = 0, n = 0; i < 8; ++i) {
+        int new_row = row + n_directions[i][0];
+        int new_col = col + n_directions[i][1];
+
+        if (new_row >= 0 && new_row < MAX_ROWS && new_col >= 0 && new_col < MAX_COLS) {
+            neighbours[n++] = &cells[new_row * MAX_COLS + new_col];
+        }
+    }
+}
+
+int GetAliveCountNeighbours(int idx) {
+    // get neighbours
+    bool *neighbours[8] = {0};
+    GetNeighbours(neighbours, idx);
+
+    // count alive
+    int alive = 0;
+    for (int i = 0; i < 8; ++i) if (neighbours[i] && *neighbours[i]) ++alive;
+    return alive;
+}
 
 void DrawGrid() {
     SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255);
