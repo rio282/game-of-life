@@ -53,6 +53,7 @@ float perlin(float x, float y) {
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "cert-msc51-cpp"
+#pragma ide diagnostic ignored "cert-msc50-cpp"
 
 void InitPermutationTable() {
 
@@ -74,8 +75,8 @@ void InitPermutationTable() {
 void GenerateBinaryNoise(int width, int height, bool grid[], float threshold) {
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
-            float value = perlin((float) x * 0.1f, (float) y * 0.1f);
-            int idx = y * width + x;
+            const float value = perlin((float) x * 0.1f, (float) y * 0.1f);
+            const int idx = y * width + x;
             grid[idx] = value > threshold;
         }
     }

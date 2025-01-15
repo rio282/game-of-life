@@ -29,11 +29,18 @@
 
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
+static char title[256] = WIN_TITLE;
 static bool paused = false;
 static bool draw_grid = true;
 
 bool cells[GRID_SIZE] = {0};
 bool next[GRID_SIZE] = {0};
+
+Uint32 generation;
+size_t population;
+char generation_str[256] = {0};
+char population_str[256] = {0};
+char tickrate_str[256] = {0};
 
 const int n_directions[8][2] = {
         {-1, -1}, // Top-left
@@ -57,13 +64,13 @@ void GetNeighbours(bool *neighbours[8], size_t idx) {
     }
 }
 
-int GetAliveCountNeighbours(size_t idx) {
+char GetAliveCountNeighbours(size_t idx) {
     // get neighbours
     bool *neighbours[8] = {0};
     GetNeighbours(neighbours, idx);
 
     // count alive
-    int alive = 0;
+    char alive = 0;
     for (int i = 0; i < 8; ++i) if (neighbours[i] && *neighbours[i]) ++alive;
     return alive;
 }
@@ -71,7 +78,8 @@ int GetAliveCountNeighbours(size_t idx) {
 void UpdateCells() {
 
     size_t idx;
-    int n_alive;
+    char n_alive;
+    population = 0;
 
     for (size_t row = 0; row < MAX_ROWS; ++row) {
         for (size_t col = 0; col < MAX_COLS; ++col) {
@@ -91,6 +99,8 @@ void UpdateCells() {
                 next[idx] = n_alive == 3;
             }
 
+            if (next[idx]) population++;
+
         }
     }
 
@@ -98,6 +108,9 @@ void UpdateCells() {
     for (size_t i = 0; i < GRID_SIZE; ++i) {
         cells[i] = next[i];
     }
+
+    // update generation
+    generation++;
 
 }
 
@@ -135,6 +148,23 @@ void DrawCells() {
     }
 }
 
+void DrawInformationText() {
+
+    if (paused) {
+        SDL_RenderDebugText(renderer, CELL_SIZE / 2.0, CELL_SIZE / 2.0, "Paused");
+        return;
+    }
+
+    snprintf(tickrate_str, sizeof(tickrate_str), "Tickrate: %d", TICK_RATE);
+    snprintf(generation_str, sizeof(generation_str), "Generation: %d", generation);
+    snprintf(population_str, sizeof(population_str), "Population: %zu", population);
+
+    SDL_RenderDebugText(renderer, CELL_SIZE / 2.0, CELL_SIZE / 2.0, tickrate_str);
+    SDL_RenderDebugText(renderer, CELL_SIZE / 2.0, CELL_SIZE, generation_str);
+    SDL_RenderDebugText(renderer, CELL_SIZE / 2.0, CELL_SIZE + (CELL_SIZE / 2.0), population_str);
+
+}
+
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "cert-msc51-cpp"
 
@@ -143,7 +173,13 @@ void GenerateRandomPattern() {
 
     srand(time(NULL));
     InitPermutationTable();
-    GenerateBinaryNoise(MAX_COLS, MAX_ROWS, cells, threshold);
+
+    // keep generating until we get a non-empty map, or we're reached the max amount of attempts
+    for (unsigned char attempts = 0, max_attempts = 255; attempts < max_attempts; ++attempts) {
+        GenerateBinaryNoise(MAX_COLS, MAX_ROWS, cells, threshold);
+        for (size_t i = 0; i < GRID_SIZE; ++i) if (cells[i]) return;
+    }
+    SDL_Log("Failed to generate a map... Please try again by pressing [R].");
 }
 
 #pragma clang diagnostic pop
@@ -155,7 +191,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     }
 
     if (!SDL_CreateWindowAndRenderer(
-            WIN_TITLE, WIN_WIDTH, WIN_HEIGHT,
+            title, WIN_WIDTH, WIN_HEIGHT,
             SDL_WINDOW_BORDERLESS | SDL_WINDOW_INPUT_FOCUS,
             &window, &renderer)) {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Couldn't create window/renderer!", SDL_GetError(), NULL);
@@ -178,13 +214,16 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
                 return SDL_APP_SUCCESS;
             case SDL_SCANCODE_SPACE:
                 paused = !paused;
-                SDL_Log("Paused: %s", paused ? "true" : "false");
+                snprintf(title, sizeof(title), "%s%s", WIN_TITLE, paused ? " (Paused)" : "");
+                SDL_SetWindowTitle(window, title);
                 break;
             case SDL_SCANCODE_R:
                 GenerateRandomPattern();
+                generation = 0;
                 break;
             case SDL_SCANCODE_C:
                 for (size_t i = 0; i < GRID_SIZE; ++i) cells[i] = false;
+                generation = 0;
                 break;
             case SDL_SCANCODE_G:
                 draw_grid = !draw_grid;
@@ -222,6 +261,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
     if (draw_grid) DrawGrid();
     DrawCells();
+    DrawInformationText();
 
     SDL_RenderPresent(renderer);
     SDL_Delay(TICK_DELAY);
