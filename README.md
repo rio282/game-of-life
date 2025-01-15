@@ -5,10 +5,10 @@ written in C using the new SDL version 3.
 
 Keybinds:
 
-| Key    | Action                  |
-|--------|-------------------------|
-| ESCAPE | Exit                    |
-| SPACE  | Pause/Resume            |
-| R      | Generate Random Pattern |
-| C      | Clear Grid              |
-| G      | Toggle Grid Drawing     |
+| Key      | Action                  |
+|----------|-------------------------|
+| `ESCAPE` | Exit                    |
+| `SPACE`  | Pause/Resume            |
+| `R`      | Generate Random Pattern |
+| `C`      | Clear Grid              |
+| `G`      | Toggle Grid Drawing     |
