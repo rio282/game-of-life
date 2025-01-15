@@ -30,6 +30,7 @@
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
 static bool paused = false;
+static bool draw_grid = true;
 
 bool cells[GRID_SIZE] = {0};
 bool next[GRID_SIZE] = {0};
@@ -179,6 +180,15 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
                 paused = !paused;
                 SDL_Log("Paused: %s", paused ? "true" : "false");
                 break;
+            case SDL_SCANCODE_R:
+                GenerateRandomPattern();
+                break;
+            case SDL_SCANCODE_C:
+                for (size_t i = 0; i < GRID_SIZE; ++i) cells[i] = false;
+                break;
+            case SDL_SCANCODE_G:
+                draw_grid = !draw_grid;
+                break;
             default:
                 break;
         }
@@ -210,7 +220,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
-    DrawGrid();
+    if (draw_grid) DrawGrid();
     DrawCells();
 
     SDL_RenderPresent(renderer);
